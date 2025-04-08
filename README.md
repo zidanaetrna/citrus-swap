@@ -23,7 +23,7 @@ An automated swap bot for the Citrea testnet that performs random swaps between 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/citrus-swap.git
+   git clone https://github.com/zidanaetrna/citrus-swap.git
    cd citrus-swap
    ```
 
