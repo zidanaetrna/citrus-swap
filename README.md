@@ -96,4 +96,4 @@ Author: aetrna
 
 ---
 
-Disclaimer This is for educational and testnet purposes only. Use at your own risk, especially with real funds or mainnet deployments.
+Disclaimer This is for educational and testnet purposes only. Use at your own risk, me are not responsible for any loses of your balances.
