@@ -32,17 +32,17 @@ An automated swap bot for the Citrea testnet that performs random swaps between 
    npm install chalk@4.1.2 clear@0.1.0 dotenv@16.4.7 ethers@6.13.5 inquirer@8.2.6 node-schedule@2.1.1
    ```
 
-3. Create a `.env` file in the root directory with your private key:
-   ```env
-   PRIVATE_KEY=your_private_key_without_0x
-   ```
+3. Start the bot
+    ```bash
+    node index.js
+    ```
 
 ## Usage 🚀
 
 ### Starting the Bot
-```bash
-node index.js
-```
+    ```env
+    Please provide your private key (without 0x): fill_with_your_pk_without_0x
+    ```
 
 You'll be presented with a menu:
 1. **Start Auto-Swap Bot**: Runs random swaps daily at midnight
