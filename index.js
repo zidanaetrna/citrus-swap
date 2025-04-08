@@ -8,11 +8,15 @@ require("dotenv").config();
 
 // Constants
 const PROJECT_NAME = "Citrus Swap";
-const CREATOR_NAME = "aetrna"; 
+const CREATOR_NAME = "aetrna";
 const RPC_URL = "https://rpc.testnet.citrea.xyz";
 const ROUTER_ADDRESS = "0xb45670f668EE53E62b5F170B5B1d3C6701C8d03A";
 const USDT_ADDRESS = "0xb669dC8cC6D044307Ba45366C0c836eC3c7e31AA";
-let PRIVATE_KEY = process.env.PRIVATE_KEY;
+
+// Load all private keys from .env
+const PRIVATE_KEYS = Object.keys(process.env)
+  .filter((key) => key.startsWith("PRIVATE_KEY_"))
+  .map((key) => process.env[key]);
 
 // Uniswap V2 Router ABI
 const routerAbi = [
@@ -41,7 +45,7 @@ const asciiArt = [
 ];
 
 function displayInterface() {
-  clear(); 
+  clear();
   console.log(chalk.magenta(`================ ${PROJECT_NAME} Auto-bot ====================`));
   console.log("");
 
@@ -54,46 +58,72 @@ function displayInterface() {
   console.log("");
 }
 
-async function getPrivateKey() {
-  if (!PRIVATE_KEY) {
+// Collect multiple private keys until user presses Enter with no input
+async function getPrivateKeys() {
+  if (PRIVATE_KEYS.length === 0) {
     displayInterface();
-    const { pk } = await inquirer.prompt([
-      {
-        type: "input",
-        name: "pk",
-        message: chalk.cyan("Please provide your private key (without 0x): "),
-        validate: (input) => {
-          if (/^[0-9a-fA-F]{64}$/.test(input)) return true;
-          return "Invalid private key! Must be a 64-character hex string without 0x.";
-        },
-      },
-    ]);
-    const envContent = `PRIVATE_KEY=${pk}\n`;
-    fs.writeFileSync(".env", envContent, { flag: "w" });
-    console.log(chalk.green("✅ Private key saved to .env file!"));
+    const privateKeys = [];
+    let walletIndex = 1;
 
-    process.env.PRIVATE_KEY = pk;
-    PRIVATE_KEY = pk;
+    while (true) {
+      const { pk } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "pk",
+          message: chalk.cyan(`Please provide your private key ${walletIndex} (without 0x, or press Enter to finish): `),
+          validate: (input) => {
+            if (input === "") return true; // Allow empty input to finish
+            if (/^[0-9a-fA-F]{64}$/.test(input)) return true;
+            return "Invalid private key! Must be a 64-character hex string without 0x.";
+          },
+        },
+      ]);
+
+      if (pk === "") break; // Exit loop if user presses Enter without input
+      privateKeys.push(pk);
+      walletIndex++;
+    }
+
+    if (privateKeys.length === 0) {
+      throw new Error("No private keys provided!");
+    }
+
+    // Write private keys to .env
+    const envContent = privateKeys
+      .map((key, index) => `PRIVATE_KEY_${index + 1}=${key}`)
+      .join("\n") + "\n";
+    fs.writeFileSync(".env", envContent, { flag: "w" });
+    console.log(chalk.green(`✅ ${privateKeys.length} private key(s) saved to .env file!`));
+
+    // Update process.env and PRIVATE_KEYS
+    privateKeys.forEach((key, index) => {
+      process.env[`PRIVATE_KEY_${index + 1}`] = key;
+    });
+    PRIVATE_KEYS.push(...privateKeys);
   }
 }
 
+// Initialize a random wallet from the list
 async function initializeWallet() {
-  await getPrivateKey();
-  const provider = new ethers.JsonRpcProvider(RPC_URL); 
-  return new ethers.Wallet(PRIVATE_KEY, provider);
+  await getPrivateKeys();
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const randomIndex = Math.floor(Math.random() * PRIVATE_KEYS.length);
+  const selectedKey = PRIVATE_KEYS[randomIndex];
+  console.log(chalk.blue(`🤖 Using wallet ${randomIndex + 1} for this session`));
+  return new ethers.Wallet(selectedKey, provider);
 }
 
 const getRandomAmount = () => {
   const min = 0.00001;
   const max = 0.001;
   const random = Math.random() * (max - min) + min;
-  return ethers.parseEther(random.toFixed(18)); 
+  return ethers.parseEther(random.toFixed(18));
 };
 
 const getRandomUSDTAmount = (cbtcAmount) => {
-  const cbtcValue = parseFloat(ethers.formatEther(cbtcAmount)); 
+  const cbtcValue = parseFloat(ethers.formatEther(cbtcAmount));
   const usdtValue = cbtcValue * 60000;
-  return ethers.parseUnits(usdtValue.toFixed(6), 6); 
+  return ethers.parseUnits(usdtValue.toFixed(6), 6);
 };
 
 const DEADLINE = () => Math.floor(Date.now() / 1000) + 60 * 20;
@@ -202,7 +232,7 @@ async function startBot(wallet, routerContract) {
 }
 
 async function main() {
-  console.log(chalk.blue("🤖 Initializing Uniswap V2 Swap Bot..."));
+  console.log(chalk.blue("🤖 Initializing Citrus Swap Bot..."));
   const wallet = await initializeWallet();
   const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet);
   await startBot(wallet, routerContract);
