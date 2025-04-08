@@ -84,7 +84,7 @@ const CBTC_PRICE = 60000;        // Price in USDT
 
 For issues or feature requests, please open an issue on GitHub.
 
----
+
 
 *Created with 💜 by aetrna - Version 1.0*
 
