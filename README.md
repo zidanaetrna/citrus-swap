@@ -87,16 +87,8 @@ For issues or feature requests, please open an issue on GitHub.
 ---
 
 *Created with 💜 by aetrna - Version 1.0*
-```
 
-You can customize this further by:
-1. Adding actual screenshots of the interface
-2. Including a real logo instead of the placeholder
-3. Adding more detailed troubleshooting information
-4. Including contribution guidelines if you plan to open-source it
-5. Adding license information
-
-```
+---
 
 ## License
 This project is licensed under the MIT License. See the LICENSE (./LICENSE) file for details. 
