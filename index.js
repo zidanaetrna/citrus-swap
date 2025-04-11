@@ -36,7 +36,8 @@ const pairAbi = [
 const usdtAbi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
   "function balanceOf(address account) public view returns (uint256)",
-  "function decimals() public view returns (uint8)"
+  "function decimals() public view returns (uint8)",
+  "function allowance(address owner, address spender) public view returns (uint256)" // Added explicitly
 ];
 
 const colors = [
@@ -178,7 +179,7 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.blue(`🔹 Amount: ${ethers.formatEther(cbtcAmount)} cBTC`));
 
     const tx = await routerContract.swapExactETHForTokens(
-      0, // Minimal version: no slippage calc
+      0,
       path,
       wallet.address,
       Math.floor(Date.now() / 1000) + 60 * 20,
@@ -193,7 +194,6 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.green(`✅ cBTC → USDT successful!`));
     console.log(chalk.green(`   Tx: ${tx.hash}`));
     
-    // Return approximate USDT received (no getAmountsOut for now)
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
     const usdtBalance = await usdtContract.balanceOf(wallet.address);
     return usdtBalance;
@@ -210,15 +210,17 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
     const usdtBalance = await usdtContract.balanceOf(wallet.address);
     
-    if (usdtBalance < usdtAmount) {
+    if (usdtBalance.lt(usdtAmount)) { // Use .lt() for BigNumber comparison
       throw new Error(`Insufficient USDT: ${ethers.formatUnits(usdtBalance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
     }
 
     const allowance = await usdtContract.allowance(wallet.address, ROUTER_ADDRESS);
-    if (allowance < usdtAmount) {
+    console.log(chalk.blue(`🔹 Current allowance: ${ethers.formatUnits(allowance, 6)} USDT`));
+    if (allowance.lt(usdtAmount)) { // Use .lt() for BigNumber
       console.log(chalk.blue(`🔹 Approving USDT...`));
       const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
       await approveTx.wait();
+      console.log(chalk.blue(`🔹 Approved: ${approveTx.hash}`));
     }
 
     const wethAddress = await routerContract.WETH();
@@ -229,12 +231,11 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
     const expectedCBTC = ethers.BigNumber.from(amountsOut[1]);
     console.log(chalk.blue(`🔹 Expected cBTC: ${ethers.formatEther(expectedCBTC)}`));
 
-    // Debug pair info
     const [reserve0, reserve1] = await pairContract.getReserves();
     const token0 = await pairContract.token0();
     console.log(chalk.blue(`🔹 Pair reserves: ${ethers.formatUnits(reserve0, 6)} ${token0 === USDT_ADDRESS ? "USDT" : "WETH"} / ${ethers.formatEther(reserve1)} ${token0 === USDT_ADDRESS ? "WETH" : "USDT"}`));
 
-    const amountOutMin = expectedCBTC.mul(95).div(100); // 5% slippage
+    const amountOutMin = expectedCBTC.mul(95).div(100);
     const tx = await routerContract.swapExactTokensForETH(
       usdtAmount,
       amountOutMin,
