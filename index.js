@@ -207,14 +207,16 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
   console.log(chalk.blue(`🤖 Starting USDT → cBTC swap...`));
   
   try {
-    const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
-    const usdtBalance = ethers.BigNumber.from(await usdtContract.balanceOf(wallet.address)); // Convert to BigNumber
+    const signer = wallet.connect(wallet.provider); // Explicit signer
+    const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, signer); // Use signer
+    const routerContractWithSigner = routerContract.connect(signer); // Use signer for router too
     
+    const usdtBalance = ethers.BigNumber.from(await usdtContract.balanceOf(wallet.address));
     if (usdtBalance.lt(usdtAmount)) {
       throw new Error(`Insufficient USDT: ${ethers.formatUnits(usdtBalance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
     }
 
-    const allowance = ethers.BigNumber.from(await usdtContract.allowance(wallet.address, ROUTER_ADDRESS)); // Convert to BigNumber
+    const allowance = ethers.BigNumber.from(await usdtContract.allowance(wallet.address, ROUTER_ADDRESS));
     console.log(chalk.blue(`🔹 Current allowance: ${ethers.formatUnits(allowance, 6)} USDT`));
     if (allowance.lt(usdtAmount)) {
       console.log(chalk.blue(`🔹 Approving USDT...`));
@@ -223,11 +225,11 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
       console.log(chalk.blue(`🔹 Approved: ${approveTx.hash}`));
     }
 
-    const wethAddress = await routerContract.WETH();
+    const wethAddress = await routerContractWithSigner.WETH();
     const path = [USDT_ADDRESS, wethAddress];
     console.log(chalk.blue(`🔹 Path: [${path.join(" → ")}]`));
 
-    const amountsOut = await routerContract.getAmountsOut(usdtAmount, path);
+    const amountsOut = await routerContractWithSigner.getAmountsOut(usdtAmount, path);
     const expectedCBTC = ethers.BigNumber.from(amountsOut[1]);
     console.log(chalk.blue(`🔹 Expected cBTC: ${ethers.formatEther(expectedCBTC)}`));
 
@@ -236,7 +238,7 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
     console.log(chalk.blue(`🔹 Pair reserves: ${ethers.formatUnits(reserve0, 6)} ${token0 === USDT_ADDRESS ? "USDT" : "WETH"} / ${ethers.formatEther(reserve1)} ${token0 === USDT_ADDRESS ? "WETH" : "USDT"}`));
 
     const amountOutMin = expectedCBTC.mul(95).div(100);
-    const tx = await routerContract.swapExactTokensForETH(
+    const tx = await routerContractWithSigner.swapExactTokensForETH(
       usdtAmount,
       amountOutMin,
       path,
@@ -272,7 +274,7 @@ async function performSwapCycle(wallet, cbtcAmount) {
   console.log(chalk.blue(`🤖 Starting swap cycle...`));
   
   try {
-    const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet.connect(wallet.provider)); // Explicit signer
+    const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet.connect(wallet.provider));
     const pairContract = new ethers.Contract(PAIR_ADDRESS, pairAbi, wallet);
 
     const usdtReceived = await swapCBTCtoUSDT(wallet, routerContract, cbtcAmount);
