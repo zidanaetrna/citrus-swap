@@ -161,7 +161,9 @@ const getRandomAmount = () => {
 const DEADLINE = () => Math.floor(Date.now() / 1000) + 60 * 20;
 
 async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
+  console.log(chalk.blue(`🤖 Entering swapCBTCtoUSDT...`));
   try {
+    console.log(chalk.blue(`🤖 Checking balance...`));
     const balance = await wallet.provider.getBalance(wallet.address);
     console.log(chalk.blue(`🤖 cBTC Balance before swap: ${ethers.formatEther(balance)} cBTC`));
     if (ethers.BigNumber.from(balance).lt(cbtcAmount)) {
@@ -172,28 +174,27 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     const wethAddress = await routerContract.WETH();
     console.log(chalk.blue(`🤖 WETH address: ${wethAddress}`));
 
+    console.log(chalk.blue(`🤖 Building swap path...`));
     const path = [wethAddress, USDT_ADDRESS];
+    console.log(chalk.blue(`🤖 Path: ${path.join(", ")}`));
+
     console.log(chalk.blue(`🤖 Fetching amounts out...`));
     const amountsOutRaw = await routerContract.getAmountsOut(cbtcAmount, path);
     console.log(chalk.blue(`🤖 Raw amountsOut: ${amountsOutRaw.map(a => a.toString()).join(", ")}`));
     const amountsOut = amountsOutRaw.map((amount) => ethers.BigNumber.from(amount));
     console.log(chalk.blue(`🤖 Expected amounts out: ${amountsOut.map(a => ethers.formatUnits(a, 18)).join(", ")}`));
     const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage tolerance
+    console.log(chalk.blue(`🤖 Amount out min: ${ethers.formatUnits(amountOutMin, 18)}`));
 
     console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatEther(cbtcAmount)} cBTC to USDT...`));
-    let tx;
-    try {
-      tx = await routerContract.swapExactETHForTokens(
-        amountOutMin,
-        path,
-        wallet.address,
-        DEADLINE(),
-        { value: cbtcAmount, gasLimit: 300000 }
-      );
-    } catch (swapError) {
-      throw new Error(`Transaction failed: ${swapError.message}`);
-    }
-    if (!tx) throw new Error("Transaction object is undefined");
+    console.log(chalk.blue(`🤖 Swap params: amountOutMin=${amountOutMin.toString()}, path=${path}, to=${wallet.address}, deadline=${DEADLINE()}`));
+    const tx = await routerContract.swapExactETHForTokens(
+      amountOutMin,
+      path,
+      wallet.address,
+      DEADLINE(),
+      { value: cbtcAmount, gasLimit: 300000 }
+    );
     console.log(chalk.blue(`🤖 Transaction sent: ${JSON.stringify(tx, null, 2)}`));
     const receipt = await tx.wait();
     console.log(chalk.green(`🌟 cBTC (${ethers.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
@@ -201,30 +202,37 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     return amountsOut[1];
   } catch (error) {
     console.error(chalk.red(`❌ swapCBTCtoUSDT failed: ${error.message}`));
+    console.error(chalk.red(`❌ Full error: ${JSON.stringify(error, null, 2)}`));
     throw error;
   }
 }
 
 async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
+  console.log(chalk.blue(`🤖 Entering swapUSDTtoCBTC...`));
   try {
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
+    console.log(chalk.blue(`🤖 Checking USDT balance...`));
     const balance = await usdtContract.balanceOf(wallet.address);
     console.log(chalk.blue(`🤖 USDT Balance: ${ethers.formatUnits(balance, 6)} USDT`));
     if (ethers.BigNumber.from(balance).lt(usdtAmount)) {
       throw new Error(`Insufficient USDT balance: ${ethers.formatUnits(balance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
     }
 
+    console.log(chalk.blue(`🤖 Approving USDT...`));
     const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
     console.log(chalk.blue(`🤖 Approve Tx sent: ${approveTx.hash}`));
     await approveTx.wait();
 
+    console.log(chalk.blue(`🤖 Building swap path...`));
     const path = [USDT_ADDRESS, await routerContract.WETH()];
+    console.log(chalk.blue(`🤖 Fetching amounts out...`));
     const amountsOutRaw = await routerContract.getAmountsOut(usdtAmount, path);
     console.log(chalk.blue(`🤖 Raw amountsOut: ${amountsOutRaw.map(a => a.toString()).join(", ")}`));
     const amountsOut = amountsOutRaw.map((amount) => ethers.BigNumber.from(amount));
     console.log(chalk.blue(`🤖 Expected amounts out: ${amountsOut.map(a => ethers.formatUnits(a, 18)).join(", ")}`));
-    const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage tolerance
+    const amountOutMin = amountsOut[1].mul(95).div(100);
 
+    console.log(chalk.blue(`🤖 Preparing to swap USDT to cBTC...`));
     const tx = await routerContract.swapExactTokensForETH(
       usdtAmount,
       amountOutMin,
@@ -244,6 +252,7 @@ async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
 }
 
 async function performSwapCycle(wallet, routerContract, cbtcAmount) {
+  console.log(chalk.blue(`🤖 Starting swap cycle...`));
   try {
     const usdtAmount = await swapCBTCtoUSDT(wallet, routerContract, cbtcAmount);
     await swapUSDTtoCBTC(wallet, routerContract, usdtAmount);
