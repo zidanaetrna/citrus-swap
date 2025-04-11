@@ -94,7 +94,9 @@ async function getPrivateKeys() {
 
 async function initializeWallet() {
     await getPrivateKeys();
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const provider = ethers.providers && ethers.providers.JsonRpcProvider 
+        ? new ethers.providers.JsonRpcProvider(RPC_URL) 
+        : new (require("ethers").providers.JsonRpcProvider)(RPC_URL);
     await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
     const randomIndex = Math.floor(Math.random() * PRIVATE_KEYS.length);
     const wallet = new ethers.Wallet(PRIVATE_KEYS[randomIndex], provider);
@@ -108,7 +110,9 @@ async function initializeSpecificWallet(accountNumber) {
     await getPrivateKeys();
     const index = accountNumber - 1;
     if (index < 0 || index >= PRIVATE_KEYS.length) throw new Error(`Invalid account number! Must be between 1 and ${PRIVATE_KEYS.length}`);
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const provider = ethers.providers && ethers.providers.JsonRpcProvider 
+        ? new ethers.providers.JsonRpcProvider(RPC_URL) 
+        : new (require("ethers").providers.JsonRpcProvider)(RPC_URL);
     await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
     const wallet = new ethers.Wallet(PRIVATE_KEYS[index], provider);
     console.log(chalk.blue(`🤖 Using wallet ${accountNumber}: ${wallet.address}`));
@@ -119,7 +123,9 @@ async function initializeSpecificWallet(accountNumber) {
 
 async function initializeAllWallets() {
     await getPrivateKeys();
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const provider = ethers.providers && ethers.providers.JsonRpcProvider 
+        ? new ethers.providers.JsonRpcProvider(RPC_URL) 
+        : new (require("ethers").providers.JsonRpcProvider)(RPC_URL);
     await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
     return PRIVATE_KEYS.map((key, index) => {
         const wallet = new ethers.Wallet(key, provider);
