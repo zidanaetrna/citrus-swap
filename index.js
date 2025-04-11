@@ -24,6 +24,7 @@ const routerAbi = [
   "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
   "function WETH() external pure returns (address)",
   "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)",
+  "function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts)"
 ];
 
 // USDT ABI
@@ -187,15 +188,21 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.blue(`🤖 Amount out min: ${ethers.formatUnits(amountOutMin, 18)}`));
 
     console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatEther(cbtcAmount)} cBTC to USDT...`));
-    console.log(chalk.blue(`🤖 Swap params: amountOutMin=${amountOutMin.toString()}, path=${path}, to=${wallet.address}, deadline=${DEADLINE()}`));
-    const tx = await routerContract.swapExactETHForTokens(
-      amountOutMin,
-      path,
-      wallet.address,
-      DEADLINE(),
-      { value: cbtcAmount, gasLimit: 300000 }
-    );
-    console.log(chalk.blue(`🤖 Transaction sent: ${JSON.stringify(tx, null, 2)}`));
+    
+    // Fixed transaction construction
+    const tx = await wallet.sendTransaction({
+      to: ROUTER_ADDRESS,
+      data: routerContract.interface.encodeFunctionData("swapExactETHForTokens", [
+        amountOutMin,
+        path,
+        wallet.address,
+        DEADLINE()
+      ]),
+      value: cbtcAmount,
+      gasLimit: 300000
+    });
+
+    console.log(chalk.blue(`🤖 Transaction sent: ${tx.hash}`));
     const receipt = await tx.wait();
     console.log(chalk.green(`🌟 cBTC (${ethers.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
     console.log(chalk.green(`✅ cBTC -> USDT Swap completed, received ${ethers.formatUnits(amountsOut[1], 6)} USDT`));
@@ -220,11 +227,13 @@ async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
 
     console.log(chalk.blue(`🤖 Approving USDT...`));
     const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
-    console.log(chalk.blue(`🤖 Approve Tx sent: ${approveTx.hash}`));
     await approveTx.wait();
+    console.log(chalk.blue(`🤖 Approval confirmed`));
 
     console.log(chalk.blue(`🤖 Building swap path...`));
     const path = [USDT_ADDRESS, await routerContract.WETH()];
+    console.log(chalk.blue(`🤖 Path: ${path.join(", ")}`));
+
     console.log(chalk.blue(`🤖 Fetching amounts out...`));
     const amountsOutRaw = await routerContract.getAmountsOut(usdtAmount, path);
     console.log(chalk.blue(`🤖 Raw amountsOut: ${amountsOutRaw.map(a => a.toString()).join(", ")}`));
@@ -241,7 +250,7 @@ async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
       DEADLINE(),
       { gasLimit: 300000 }
     );
-    console.log(chalk.blue(`🤖 Transaction sent: ${JSON.stringify(tx, null, 2)}`));
+    console.log(chalk.blue(`🤖 Transaction sent: ${tx.hash}`));
     const receipt = await tx.wait();
     console.log(chalk.green(`🌟 USDT (${ethers.formatUnits(usdtAmount, 6)} USDT) -> cBTC Tx: ${tx.hash}`));
     console.log(chalk.green("✅ USDT -> cBTC Swap completed"));
