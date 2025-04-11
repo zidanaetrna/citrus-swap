@@ -18,17 +18,18 @@ const PRIVATE_KEYS = Object.keys(process.env)
   .filter((key) => key.startsWith("PRIVATE_KEY_"))
   .map((key) => process.env[key]);
 
-// Uniswap V2 Router ABI (simplified to working version)
+// Uniswap V2 Router ABI (expanded for debugging)
 const routerAbi = [
   "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
   "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-  "function WETH() external pure returns (address)"
+  "function WETH() external pure returns (address)",
+  "function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)",
 ];
 
 // USDT ABI
 const usdtAbi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
-  "function balanceOf(address account) public view returns (uint256)"
+  "function balanceOf(address account) public view returns (uint256)",
 ];
 
 const colors = [
@@ -54,11 +55,7 @@ function displayInterface() {
   clear();
   console.log(chalk.magenta(`================ ${PROJECT_NAME} Auto-bot ====================`));
   console.log("");
-
-  asciiArt.forEach((line, index) => {
-    console.log(colors[index](line));
-  });
-
+  asciiArt.forEach((line, index) => console.log(colors[index](line)));
   console.log("");
   console.log(chalk.magenta(`================= Created by: ${CREATOR_NAME} ====================`));
   console.log("");
@@ -89,19 +86,11 @@ async function getPrivateKeys() {
       walletIndex++;
     }
 
-    if (privateKeys.length === 0) {
-      throw new Error("No private keys provided!");
-    }
-
-    const envContent = privateKeys
-      .map((key, index) => `PRIVATE_KEY_${index + 1}=${key}`)
-      .join("\n") + "\n";
+    if (privateKeys.length === 0) throw new Error("No private keys provided!");
+    const envContent = privateKeys.map((key, index) => `PRIVATE_KEY_${index + 1}=${key}`).join("\n") + "\n";
     fs.writeFileSync(".env", envContent, { flag: "w" });
     console.log(chalk.green(`✅ ${privateKeys.length} private key(s) saved to .env file!`));
-
-    privateKeys.forEach((key, index) => {
-      process.env[`PRIVATE_KEY_${index + 1}`] = key;
-    });
+    privateKeys.forEach((key, index) => process.env[`PRIVATE_KEY_${index + 1}`] = key);
     PRIVATE_KEYS.push(...privateKeys);
   }
 }
@@ -123,9 +112,7 @@ async function initializeWallet() {
 async function initializeSpecificWallet(accountNumber) {
   await getPrivateKeys();
   const index = accountNumber - 1;
-  if (index < 0 || index >= PRIVATE_KEYS.length) {
-    throw new Error(`Invalid account number! Must be between 1 and ${PRIVATE_KEYS.length}`);
-  }
+  if (index < 0 || index >= PRIVATE_KEYS.length) throw new Error(`Invalid account number! Must be between 1 and ${PRIVATE_KEYS.length}`);
   const selectedKey = PRIVATE_KEYS[index];
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
@@ -165,9 +152,7 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.blue(`🤖 Checking balance...`));
     const balance = await wallet.provider.getBalance(wallet.address);
     console.log(chalk.blue(`🤖 cBTC Balance before swap: ${ethers.formatEther(balance)} cBTC`));
-    if (balance < cbtcAmount) {
-      throw new Error(`Insufficient cBTC balance: ${ethers.formatEther(balance)} < ${ethers.formatEther(cbtcAmount)}`);
-    }
+    if (ethers.BigNumber.from(balance).lt(cbtcAmount)) throw new Error(`Insufficient cBTC balance: ${ethers.formatEther(balance)} < ${ethers.formatEther(cbtcAmount)}`);
 
     console.log(chalk.blue(`🤖 Getting WETH address...`));
     const wethAddress = await routerContract.WETH();
@@ -175,12 +160,10 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
 
     console.log(chalk.blue(`🤖 Building swap path...`));
     const path = [wethAddress, USDT_ADDRESS];
-    
+
     console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatEther(cbtcAmount)} cBTC to USDT...`));
-    
-    // Using the simplified approach that worked before
     const tx = await routerContract.swapExactETHForTokens(
-      0, // Accept any amount (no slippage protection for testing)
+      0, // No slippage protection
       path,
       wallet.address,
       DEADLINE(),
@@ -191,9 +174,16 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     const receipt = await tx.wait();
     console.log(chalk.green(`🌟 cBTC (${ethers.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
     console.log(chalk.green("✅ cBTC -> USDT Swap completed"));
+
+    // Log USDT balance after swap
+    const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
+    const usdtBalance = await usdtContract.balanceOf(wallet.address);
+    console.log(chalk.blue(`🤖 USDT Balance after swap: ${ethers.formatUnits(usdtBalance, 6)} USDT`));
+
     return cbtcAmount;
   } catch (error) {
     console.error(chalk.red(`❌ swapCBTCtoUSDT failed: ${error.message}`));
+    console.error(chalk.red(`❌ Full error: ${JSON.stringify(error, null, 2)}`));
     throw error;
   }
 }
@@ -201,34 +191,46 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
 async function swapUSDTtoCBTC(wallet, routerContract, cbtcAmount) {
   console.log(chalk.blue(`🤖 Entering swapUSDTtoCBTC...`));
   try {
-    // Simplified USDT amount calculation (1 cBTC ≈ 60,000 USDT for testnet)
-    const usdtAmount = ethers.parseUnits((parseFloat(ethers.formatEther(cbtcAmount)) * 60000).toFixed(6), 6);
-    
+    // Check USDT balance first
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
+    const usdtBalance = await usdtContract.balanceOf(wallet.address);
+    console.log(chalk.blue(`🤖 USDT Balance: ${ethers.formatUnits(usdtBalance, 6)} USDT`));
+
+    // Calculate USDT amount based on actual received amount (not hardcoded)
+    const path = [USDT_ADDRESS, await routerContract.WETH()];
+    const amountsOut = await routerContract.getAmountsOut(ethers.parseEther("0.0001"), [await routerContract.WETH(), USDT_ADDRESS]); // Estimate from 0.0001 cBTC
+    const usdtPerCBTC = amountsOut[1].mul(ethers.parseEther("1")).div(ethers.parseEther("0.0001"));
+    const usdtAmount = ethers.BigNumber.from(cbtcAmount).mul(usdtPerCBTC).div(ethers.parseEther("1"));
+    console.log(chalk.blue(`🤖 Calculated USDT to swap: ${ethers.formatUnits(usdtAmount, 6)} USDT`));
+
+    if (ethers.BigNumber.from(usdtBalance).lt(usdtAmount)) throw new Error(`Insufficient USDT: ${ethers.formatUnits(usdtBalance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
+
     console.log(chalk.blue(`🤖 Approving USDT...`));
     const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
+    console.log(chalk.blue(`🤖 Approve Tx: ${approveTx.hash}`));
     await approveTx.wait();
 
-    console.log(chalk.blue(`🤖 Getting WETH address...`));
-    const wethAddress = await routerContract.WETH();
-    const path = [USDT_ADDRESS, wethAddress];
-    
-    console.log(chalk.blue(`🤖 Preparing to swap USDT to cBTC...`));
+    console.log(chalk.blue(`🤖 Building swap path...`));
+    console.log(chalk.blue(`🤖 Path: ${path.join(", ")}`));
+
+    console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatUnits(usdtAmount, 6)} USDT to cBTC...`));
     const tx = await routerContract.swapExactTokensForETH(
       usdtAmount,
-      0, // Accept any amount
+      0, // No slippage protection for now
       path,
       wallet.address,
       DEADLINE(),
-      { gasLimit: 200000 }
+      { gasLimit: 300000 } // Increased gas
     );
 
     console.log(chalk.blue(`🤖 Transaction sent: ${tx.hash}`));
+    console.log(chalk.blue(`🤖 Raw tx: ${JSON.stringify(tx, null, 2)}`));
     const receipt = await tx.wait();
-    console.log(chalk.green(`🌟 USDT -> cBTC Tx: ${tx.hash}`));
+    console.log(chalk.green(`🌟 USDT (${ethers.formatUnits(usdtAmount, 6)} USDT) -> cBTC Tx: ${tx.hash}`));
     console.log(chalk.green("✅ USDT -> cBTC Swap completed"));
   } catch (error) {
     console.error(chalk.red(`❌ swapUSDTtoCBTC failed: ${error.message}`));
+    console.error(chalk.red(`❌ Full error: ${JSON.stringify(error, null, 2)}`));
     throw error;
   }
 }
@@ -249,7 +251,6 @@ const getRandomSwaps = () => Math.floor(Math.random() * 10) + 1;
 async function dailySwap(wallets) {
   const swapCount = getRandomSwaps();
   console.log(chalk.yellow(`🚀 Starting ${swapCount} swaps for today across ${wallets.length} wallets...`));
-  
   for (let i = 0; i < swapCount; i++) {
     console.log(chalk.cyan(`🔄 Daily Swap Cycle ${i + 1}/${swapCount}`));
     await Promise.all(
@@ -269,7 +270,6 @@ async function dailySwap(wallets) {
 async function autoSwap(wallet, routerContract, totalCBTCAmount) {
   let remainingAmount = ethers.BigNumber.from(ethers.parseEther(totalCBTCAmount.toString()));
   console.log(chalk.yellow(`🚀 Starting automatic swaps for ${ethers.formatEther(remainingAmount)} cBTC...`));
-
   let swapCount = 0;
 
   while (remainingAmount.gt(0)) {
@@ -277,16 +277,13 @@ async function autoSwap(wallet, routerContract, totalCBTCAmount) {
     console.log(chalk.cyan(`🔄 Swap Cycle ${swapCount}`));
     const balance = await wallet.provider.getBalance(wallet.address);
     console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.formatEther(balance)} cBTC`));
-
-    if (balance.lte(ethers.parseEther("0.00001"))) {
+    if (ethers.BigNumber.from(balance).lte(ethers.parseEther("0.00001"))) {
       console.log(chalk.yellow("🎉 cBTC balance too low to continue swapping!"));
       break;
     }
 
     let cbtcAmount = getRandomAmount();
-    if (cbtcAmount.gt(remainingAmount)) {
-      cbtcAmount = remainingAmount;
-    }
+    if (cbtcAmount.gt(remainingAmount)) cbtcAmount = remainingAmount;
 
     await performSwapCycle(wallet, routerContract, cbtcAmount);
     remainingAmount = remainingAmount.sub(cbtcAmount);
@@ -295,7 +292,6 @@ async function autoSwap(wallet, routerContract, totalCBTCAmount) {
     console.log(chalk.blue(`⏳ Waiting ${delay / 60000} minutes before next swap...`));
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
-
   console.log(chalk.yellow("🎉 Automatic swaps completed!"));
 }
 
@@ -349,9 +345,7 @@ async function startBot(wallet, routerContract) {
           message: chalk.cyan("Account you want to use (e.g., 1, 2, ...): "),
           validate: (input) => {
             const num = parseInt(input);
-            if (isNaN(num) || num < 1 || num > PRIVATE_KEYS.length) {
-              return `Please enter a valid account number between 1 and ${PRIVATE_KEYS.length}!`;
-            }
+            if (isNaN(num) || num < 1 || num > PRIVATE_KEYS.length) return `Please enter a valid account number between 1 and ${PRIVATE_KEYS.length}!`;
             return true;
           },
         },
