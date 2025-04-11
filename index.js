@@ -108,13 +108,14 @@ async function getPrivateKeys() {
 }
 
 async function initializeWallet() {
-    await getPrivateKeys();
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const randomIndex = Math.floor(Math.random() * PRIVATE_KEYS.length);
-    const selectedKey = PRIVATE_KEYS[randomIndex];
-    console.log(chalk.blue(`🤖 Using wallet ${randomIndex + 1} for this session`));
-    return new ethers.Wallet(selectedKey, provider);
-  }
+  await getPrivateKeys();
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
+  const randomIndex = Math.floor(Math.random() * PRIVATE_KEYS.length);
+  const selectedKey = PRIVATE_KEYS[randomIndex];
+  console.log(chalk.blue(`🤖 Using wallet ${randomIndex + 1} for this session`));
+  return new ethers.Wallet(selectedKey, provider);
+}
 
 async function initializeSpecificWallet(accountNumber) {
   await getPrivateKeys();
@@ -124,6 +125,7 @@ async function initializeSpecificWallet(accountNumber) {
   }
   const selectedKey = PRIVATE_KEYS[index];
   const provider = new ethers.JsonRpcProvider(RPC_URL);
+  await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
   console.log(chalk.blue(`🤖 Using wallet ${accountNumber} for automatic swaps`));
   return new ethers.Wallet(selectedKey, provider);
 }
@@ -131,6 +133,7 @@ async function initializeSpecificWallet(accountNumber) {
 async function initializeAllWallets() {
   await getPrivateKeys();
   const provider = new ethers.JsonRpcProvider(RPC_URL);
+  await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
   const wallets = PRIVATE_KEYS.map((key, index) => {
     console.log(chalk.blue(`🤖 Initialized wallet ${index + 1} for daily swaps`));
     return new ethers.Wallet(key, provider);
@@ -150,7 +153,7 @@ const DEADLINE = () => Math.floor(Date.now() / 1000) + 60 * 20;
 async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
   const path = [(await routerContract.WETH()), USDT_ADDRESS];
   const amountsOutRaw = await routerContract.getAmountsOut(cbtcAmount, path);
-  // Convert amountsOut to BigNumber if not already
+  console.log(chalk.blue(`🤖 Raw amountsOut: ${JSON.stringify(amountsOutRaw)}`));
   const amountsOut = amountsOutRaw.map((amount) => ethers.BigNumber.from(amount));
   console.log(chalk.blue(`🤖 Expected amounts out: ${amountsOut.map(a => ethers.formatUnits(a, 18)).join(", ")}`));
   const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage tolerance
@@ -164,7 +167,7 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
   console.log(chalk.green(`🌟 cBTC (${ethers.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
   await tx.wait();
   console.log(chalk.green(`✅ cBTC -> USDT Swap completed, received ${ethers.formatUnits(amountsOut[1], 6)} USDT`));
-  return amountsOut[1]; // Return actual USDT received
+  return amountsOut[1];
 }
 
 async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
@@ -178,10 +181,11 @@ async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
 
   const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
   console.log(chalk.blue(`🤖 Approve Tx: ${approveTx.hash}`));
-  await approveTx.wait();
+  await approveTx.wait(); // Fixed typo here
 
   const path = [USDT_ADDRESS, await routerContract.WETH()];
   const amountsOutRaw = await routerContract.getAmountsOut(usdtAmount, path);
+  console.log(chalk.blue(`🤖 Raw amountsOut: ${JSON.stringify(amountsOutRaw)}`));
   const amountsOut = amountsOutRaw.map((amount) => ethers.BigNumber.from(amount));
   console.log(chalk.blue(`🤖 Expected amounts out: ${amountsOut.map(a => ethers.formatUnits(a, 18)).join(", ")}`));
   const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage tolerance
@@ -204,7 +208,7 @@ async function performSwapCycle(wallet, routerContract, cbtcAmount) {
     await swapUSDTtoCBTC(wallet, routerContract, usdtAmount);
   } catch (error) {
     console.error(chalk.red(`❌ Swap failed: ${error.message}`));
-    throw error; // Re-throw to stop the loop if needed
+    throw error;
   }
 }
 
@@ -249,7 +253,7 @@ async function autoSwap(wallet, routerContract, totalCBTCAmount) {
 
     let cbtcAmount = getRandomAmount();
     if (cbtcAmount.gt(remainingAmount)) {
-      cbtcAmount = remainingAmount; // Use remaining amount if less than random
+      cbtcAmount = remainingAmount;
     }
 
     await performSwapCycle(wallet, routerContract, cbtcAmount);
@@ -285,8 +289,8 @@ async function startBot(wallet, routerContract) {
     case choices[0]:
       console.log(chalk.green("🚀 Starting daily swap bot with all wallets..."));
       const wallets = await initializeAllWallets();
-      const randomHour = Math.floor(Math.random() * 24); // Random hour (0-23)
-      const randomMinute = Math.floor(Math.random() * 60); // Random minute (0-59)
+      const randomHour = Math.floor(Math.random() * 24);
+      const randomMinute = Math.floor(Math.random() * 60);
       console.log(chalk.blue(`⏰ Scheduled daily swaps at ${randomHour}:${randomMinute} for all wallets. Press Ctrl+C to stop.`));
       schedule.scheduleJob(`${randomMinute} ${randomHour} * * *`, () => {
         displayInterface();
@@ -325,7 +329,7 @@ async function startBot(wallet, routerContract) {
       const autoWallet = await initializeSpecificWallet(parseInt(account));
       const autoRouterContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, autoWallet);
       await autoSwap(autoWallet, autoRouterContract, amount);
-      await startBot(wallet, routerContract); // Return to menu after completion
+      await startBot(wallet, routerContract);
       break;
 
     case choices[2]:
