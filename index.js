@@ -18,29 +18,43 @@ const PRIVATE_KEYS = Object.keys(process.env)
   .filter((key) => key.startsWith("PRIVATE_KEY_"))
   .map((key) => process.env[key]);
 
-// Uniswap V2 Router ABI (simplified to working version)
+// Full Uniswap V2 Router ABI (from your latest input)
 const routerAbi = [
-  "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
-  "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-  "function WETH() external pure returns (address)"
+    {"inputs":[{"internalType":"address","name":"_factory","type":"address"},{"internalType":"address","name":"_WETH","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+    {"inputs":[],"name":"WETH","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"amountADesired","type":"uint256"},{"internalType":"uint256","name":"amountBDesired","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidity","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"amountTokenDesired","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidityETH","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"payable","type":"function"},
+    {"inputs":[],"name":"factory","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountIn","outputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountOut","outputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsIn","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"reserveA","type":"uint256"},{"internalType":"uint256","name":"reserveB","type":"uint256"}],"name":"quote","outputs":[{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidity","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidityETH","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidityETHSupportingFeeOnTransferTokens","outputs":[{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityETHWithPermit","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityETHWithPermitSupportingFeeOnTransferTokens","outputs":[{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityWithPermit","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapETHForExactTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"amountInMax","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapTokensForExactETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"amountInMax","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapTokensForExactTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"stateMutability":"payable","type":"receive"}
 ];
 
 // USDT ABI
 const usdtAbi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
-  "function balanceOf(address account) public view returns (uint256)"
+  "function balanceOf(address account) public view returns (uint256)",
 ];
 
-const colors = [
-  chalk.red,
-  chalk.yellow,
-  chalk.green,
-  chalk.cyan,
-  chalk.blue,
-  chalk.magenta,
-];
-
-// ASCII art lines
+const colors = [chalk.red, chalk.yellow, chalk.green, chalk.cyan, chalk.blue, chalk.magenta];
 const asciiArt = [
   "..%%%%...%%%%%%..%%%%%%..%%%%%...%%..%%...%%%%..",
   ".%%..%%..%%........%%....%%..%%..%%%.%%..%%..%%.",
@@ -54,11 +68,7 @@ function displayInterface() {
   clear();
   console.log(chalk.magenta(`================ ${PROJECT_NAME} Auto-bot ====================`));
   console.log("");
-
-  asciiArt.forEach((line, index) => {
-    console.log(colors[index](line));
-  });
-
+  asciiArt.forEach((line, index) => console.log(colors[index](line)));
   console.log("");
   console.log(chalk.magenta(`================= Created by: ${CREATOR_NAME} ====================`));
   console.log("");
@@ -69,7 +79,6 @@ async function getPrivateKeys() {
     displayInterface();
     const privateKeys = [];
     let walletIndex = 1;
-
     while (true) {
       const { pk } = await inquirer.prompt([
         {
@@ -83,32 +92,22 @@ async function getPrivateKeys() {
           },
         },
       ]);
-
       if (pk === "") break;
       privateKeys.push(pk);
       walletIndex++;
     }
-
-    if (privateKeys.length === 0) {
-      throw new Error("No private keys provided!");
-    }
-
-    const envContent = privateKeys
-      .map((key, index) => `PRIVATE_KEY_${index + 1}=${key}`)
-      .join("\n") + "\n";
+    if (privateKeys.length === 0) throw new Error("No private keys provided!");
+    const envContent = privateKeys.map((key, index) => `PRIVATE_KEY_${index + 1}=${key}`).join("\n") + "\n";
     fs.writeFileSync(".env", envContent, { flag: "w" });
     console.log(chalk.green(`✅ ${privateKeys.length} private key(s) saved to .env file!`));
-
-    privateKeys.forEach((key, index) => {
-      process.env[`PRIVATE_KEY_${index + 1}`] = key;
-    });
+    privateKeys.forEach((key, index) => process.env[`PRIVATE_KEY_${index + 1}`] = key);
     PRIVATE_KEYS.push(...privateKeys);
   }
 }
 
 async function initializeWallet() {
   await getPrivateKeys();
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const provider = new ethers.providers.JsonRpcProvider(RPC_URL); // Compatible with v5 & v6
   await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
   const randomIndex = Math.floor(Math.random() * PRIVATE_KEYS.length);
   const selectedKey = PRIVATE_KEYS[randomIndex];
@@ -116,30 +115,27 @@ async function initializeWallet() {
   const wallet = new ethers.Wallet(selectedKey, provider);
   console.log(chalk.blue(`🤖 Wallet address: ${wallet.address}`));
   const balance = await provider.getBalance(wallet.address);
-  console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.formatEther(balance)} cBTC`));
+  console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.utils.formatEther(balance)} cBTC`));
   return wallet;
 }
 
 async function initializeSpecificWallet(accountNumber) {
   await getPrivateKeys();
   const index = accountNumber - 1;
-  if (index < 0 || index >= PRIVATE_KEYS.length) {
-    throw new Error(`Invalid account number! Must be between 1 and ${PRIVATE_KEYS.length}`);
-  }
-  const selectedKey = PRIVATE_KEYS[index];
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  if (index < 0 || index >= PRIVATE_KEYS.length) throw new Error(`Invalid account number! Must be between 1 and ${PRIVATE_KEYS.length}`);
+  const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
   await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
   console.log(chalk.blue(`🤖 Using wallet ${accountNumber} for automatic swaps`));
-  const wallet = new ethers.Wallet(selectedKey, provider);
+  const wallet = new ethers.Wallet(PRIVATE_KEYS[index], provider);
   console.log(chalk.blue(`🤖 Wallet address: ${wallet.address}`));
   const balance = await provider.getBalance(wallet.address);
-  console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.formatEther(balance)} cBTC`));
+  console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.utils.formatEther(balance)} cBTC`));
   return wallet;
 }
 
 async function initializeAllWallets() {
   await getPrivateKeys();
-  const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
   await provider.getBlockNumber().then((block) => console.log(chalk.blue(`🤖 Connected to RPC, block number: ${block}`))).catch((err) => console.error(chalk.red(`❌ RPC Connection failed: ${err.message}`)));
   const wallets = PRIVATE_KEYS.map((key, index) => {
     console.log(chalk.blue(`🤖 Initialized wallet ${index + 1} for daily swaps`));
@@ -154,137 +150,77 @@ const getRandomAmount = () => {
   const min = 0.00001;
   const max = 0.001;
   const random = Math.random() * (max - min) + min;
-  return ethers.parseEther(random.toFixed(18));
+  return ethers.utils.parseEther(random.toFixed(18)); // v5 & v6 compatible
 };
 
 const DEADLINE = () => Math.floor(Date.now() / 1000) + 60 * 20;
 
+// cBTC -> USDT (back to original working logic)
 async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
   console.log(chalk.blue(`🤖 Entering swapCBTCtoUSDT...`));
   try {
-    console.log(chalk.blue(`🤖 Checking balance...`));
     const balance = await wallet.provider.getBalance(wallet.address);
-    console.log(chalk.blue(`🤖 cBTC Balance before swap: ${ethers.formatEther(balance)} cBTC`));
-    if (balance < cbtcAmount) {
-      throw new Error(`Insufficient cBTC balance: ${ethers.formatEther(balance)} < ${ethers.formatEther(cbtcAmount)}`);
-    }
+    console.log(chalk.blue(`🤖 cBTC Balance before swap: ${ethers.utils.formatEther(balance)} cBTC`));
+    if (ethers.BigNumber.from(balance).lt(cbtcAmount)) throw new Error(`Insufficient cBTC: ${ethers.utils.formatEther(balance)} < ${ethers.utils.formatEther(cbtcAmount)}`);
 
-    console.log(chalk.blue(`🤖 Getting WETH address...`));
-    const wethAddress = await routerContract.WETH();
-    console.log(chalk.blue(`🤖 WETH address: ${wethAddress}`));
-
-    console.log(chalk.blue(`🤖 Building swap path...`));
-    const path = [wethAddress, USDT_ADDRESS];
-    
-    console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatEther(cbtcAmount)} cBTC to USDT...`));
-    
-    // Using the simplified approach that worked before
+    const path = [await routerContract.WETH(), USDT_ADDRESS];
     const tx = await routerContract.swapExactETHForTokens(
-      0, // Accept any amount (no slippage protection for testing)
+      0, // No slippage protection (worked in original)
       path,
       wallet.address,
       DEADLINE(),
-      { value: cbtcAmount, gasLimit: 200000 }
+      { value: cbtcAmount, gasLimit: 200000 } // Original gas limit
     );
-
     console.log(chalk.blue(`🤖 Transaction sent: ${tx.hash}`));
-    const receipt = await tx.wait();
-    console.log(chalk.green(`🌟 cBTC (${ethers.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
+    await tx.wait();
+    console.log(chalk.green(`🌟 cBTC (${ethers.utils.formatEther(cbtcAmount)} cBTC) -> USDT Tx: ${tx.hash}`));
     console.log(chalk.green("✅ cBTC -> USDT Swap completed"));
-    return cbtcAmount;
+
+    // Return actual USDT received
+    const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
+    const usdtBalance = await usdtContract.balanceOf(wallet.address);
+    console.log(chalk.blue(`🤖 USDT Balance after swap: ${ethers.utils.formatUnits(usdtBalance, 6)} USDT`));
+    return usdtBalance;
   } catch (error) {
     console.error(chalk.red(`❌ swapCBTCtoUSDT failed: ${error.message}`));
+    console.error(chalk.red(`❌ Full error: ${JSON.stringify(error, null, 2)}`));
     throw error;
   }
 }
 
-async function swapUSDTtoCBTC(wallet, routerContract, cbtcAmount) {
+// USDT -> cBTC (dynamic amount with getAmountsOut)
+async function swapUSDTtoCBTC(wallet, routerContract, usdtAmount) {
   console.log(chalk.blue(`🤖 Entering swapUSDTtoCBTC...`));
   try {
-    // 1. First check USDT balance
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
     const usdtBalance = await usdtContract.balanceOf(wallet.address);
-    console.log(chalk.blue(`🤖 USDT Balance: ${ethers.formatUnits(usdtBalance, 6)} USDT`));
+    console.log(chalk.blue(`🤖 USDT Balance: ${ethers.utils.formatUnits(usdtBalance, 6)} USDT`));
+    if (ethers.BigNumber.from(usdtBalance).lt(usdtAmount)) throw new Error(`Insufficient USDT: ${ethers.utils.formatUnits(usdtBalance, 6)} < ${ethers.utils.formatUnits(usdtAmount, 6)}`);
 
-    // 2. Calculate USDT amount to swap (1 cBTC ≈ 60,000 USDT)
-    const usdtAmount = ethers.parseUnits(
-      (parseFloat(ethers.formatEther(cbtcAmount)) * 60000).toFixed(6), 
-      6
-    );
-    
-    if (usdtBalance < usdtAmount) {
-      throw new Error(`Insufficient USDT balance: ${ethers.formatUnits(usdtBalance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
-    }
+    const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
+    console.log(chalk.blue(`🤖 Approve Tx: ${approveTx.hash}`));
+    await approveTx.wait();
 
-    // 3. Approve USDT spending
-    console.log(chalk.blue(`🤖 Approving ${ethers.formatUnits(usdtAmount, 6)} USDT...`));
-    const allowance = await usdtContract.allowance(wallet.address, ROUTER_ADDRESS);
-    console.log(chalk.blue(`🤖 Current allowance: ${ethers.formatUnits(allowance, 6)} USDT`));
+    const path = [USDT_ADDRESS, await routerContract.WETH()];
+    const amountsOut = await routerContract.getAmountsOut(usdtAmount, path);
+    const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage
+    console.log(chalk.blue(`🤖 Expected cBTC: ${ethers.utils.formatEther(amountsOut[1])}, Min: ${ethers.utils.formatEther(amountOutMin)}`));
 
-    if (allowance < usdtAmount) {
-      const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
-      console.log(chalk.blue(`🤖 Approve Tx sent: ${approveTx.hash}`));
-      const approveReceipt = await approveTx.wait();
-      console.log(chalk.blue(`🤖 Approval confirmed in block ${approveReceipt.blockNumber}`));
-    }
-
-    // 4. Verify approval was successful
-    const newAllowance = await usdtContract.allowance(wallet.address, ROUTER_ADDRESS);
-    if (newAllowance < usdtAmount) {
-      throw new Error(`Approval failed. Allowance: ${ethers.formatUnits(newAllowance, 6)}, Needed: ${ethers.formatUnits(usdtAmount, 6)}`);
-    }
-
-    // 5. Prepare swap parameters
-    const wethAddress = await routerContract.WETH();
-    const path = [USDT_ADDRESS, wethAddress];
-    
-    console.log(chalk.blue(`🤖 Swap path: ${path.join(" → ")}`));
-    console.log(chalk.blue(`🤖 Amount in: ${ethers.formatUnits(usdtAmount, 6)} USDT`));
-
-    // 6. Get estimated amounts out (for debugging)
-    try {
-      const amountsOut = await routerContract.getAmountsOut(usdtAmount, path);
-      console.log(chalk.blue(`🤖 Expected cBTC out: ${ethers.formatEther(amountsOut[1])}`));
-    } catch (estimateError) {
-      console.error(chalk.yellow(`⚠️ Could not estimate swap: ${estimateError.message}`));
-    }
-
-    // 7. Execute swap with higher gas limit
     const tx = await routerContract.swapExactTokensForETH(
       usdtAmount,
-      0, // Accept any amount
+      amountOutMin,
       path,
       wallet.address,
       DEADLINE(),
-      { 
-        gasLimit: 300000, // Increased gas limit
-        gasPrice: await wallet.provider.getGasPrice() // Explicit gas price
-      }
+      { gasLimit: 300000 } // Increased for safety
     );
-
-    console.log(chalk.blue(`🤖 Swap Tx sent: ${tx.hash}`));
-    const receipt = await tx.wait();
-    
-    if (receipt.status === 0) {
-      throw new Error("Transaction reverted");
-    }
-
-    console.log(chalk.green(`🌟 USDT -> cBTC Swap successful! Tx: ${tx.hash}`));
-    console.log(chalk.green(`✅ Gas used: ${receipt.gasUsed.toString()}`));
-
+    console.log(chalk.blue(`🤖 Transaction sent: ${tx.hash}`));
+    await tx.wait();
+    console.log(chalk.green(`🌟 USDT (${ethers.utils.formatUnits(usdtAmount, 6)} USDT) -> cBTC Tx: ${tx.hash}`));
+    console.log(chalk.green("✅ USDT -> cBTC Swap completed"));
   } catch (error) {
     console.error(chalk.red(`❌ swapUSDTtoCBTC failed: ${error.message}`));
-    
-    // Additional debug info for reverts
-    if (error.code === "CALL_EXCEPTION") {
-      console.error(chalk.red(`❌ Transaction reverted without reason`));
-      console.error(chalk.red(`❌ Check if:`));
-      console.error(chalk.red(`   - USDT balance is sufficient`));
-      console.error(chalk.red(`   - Approval was successful`));
-      console.error(chalk.red(`   - Router has proper permissions`));
-      console.error(chalk.red(`   - Path [USDT → WETH] is correct`));
-    }
-    
+    console.error(chalk.red(`❌ Full error: ${JSON.stringify(error, null, 2)}`));
     throw error;
   }
 }
@@ -292,8 +228,9 @@ async function swapUSDTtoCBTC(wallet, routerContract, cbtcAmount) {
 async function performSwapCycle(wallet, routerContract, cbtcAmount) {
   console.log(chalk.blue(`🤖 Starting swap cycle...`));
   try {
-    const swappedAmount = await swapCBTCtoUSDT(wallet, routerContract, cbtcAmount);
-    await swapUSDTtoCBTC(wallet, routerContract, swappedAmount);
+    const usdtReceived = await swapCBTCtoUSDT(wallet, routerContract, cbtcAmount);
+    await swapUSDTtoCBTC(wallet, routerContract, usdtReceived);
+    console.log(chalk.blue("🔄 Swap cycle completed"));
   } catch (error) {
     console.error(chalk.red(`❌ Swap failed: ${error.message}`));
     throw error;
@@ -305,7 +242,6 @@ const getRandomSwaps = () => Math.floor(Math.random() * 10) + 1;
 async function dailySwap(wallets) {
   const swapCount = getRandomSwaps();
   console.log(chalk.yellow(`🚀 Starting ${swapCount} swaps for today across ${wallets.length} wallets...`));
-  
   for (let i = 0; i < swapCount; i++) {
     console.log(chalk.cyan(`🔄 Daily Swap Cycle ${i + 1}/${swapCount}`));
     await Promise.all(
@@ -323,35 +259,30 @@ async function dailySwap(wallets) {
 }
 
 async function autoSwap(wallet, routerContract, totalCBTCAmount) {
-  let remainingAmount = ethers.BigNumber.from(ethers.parseEther(totalCBTCAmount.toString()));
-  console.log(chalk.yellow(`🚀 Starting automatic swaps for ${ethers.formatEther(remainingAmount)} cBTC...`));
-
+  let remainingAmount = ethers.utils.parseEther(totalCBTCAmount.toString());
+  console.log(chalk.yellow(`🚀 Starting automatic swaps for ${ethers.utils.formatEther(remainingAmount)} cBTC...`));
   let swapCount = 0;
 
-  while (remainingAmount.gt(0)) {
+  while (ethers.BigNumber.from(remainingAmount).gt(0)) {
     swapCount++;
     console.log(chalk.cyan(`🔄 Swap Cycle ${swapCount}`));
     const balance = await wallet.provider.getBalance(wallet.address);
-    console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.formatEther(balance)} cBTC`));
-
-    if (balance.lte(ethers.parseEther("0.00001"))) {
+    console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.utils.formatEther(balance)} cBTC`));
+    if (ethers.BigNumber.from(balance).lte(ethers.utils.parseEther("0.00001"))) {
       console.log(chalk.yellow("🎉 cBTC balance too low to continue swapping!"));
       break;
     }
 
     let cbtcAmount = getRandomAmount();
-    if (cbtcAmount.gt(remainingAmount)) {
-      cbtcAmount = remainingAmount;
-    }
+    if (ethers.BigNumber.from(cbtcAmount).gt(remainingAmount)) cbtcAmount = remainingAmount;
 
     await performSwapCycle(wallet, routerContract, cbtcAmount);
-    remainingAmount = remainingAmount.sub(cbtcAmount);
+    remainingAmount = ethers.BigNumber.from(remainingAmount).sub(cbtcAmount);
 
     const delay = Math.floor(Math.random() * 9 + 1) * 60 * 1000;
     console.log(chalk.blue(`⏳ Waiting ${delay / 60000} minutes before next swap...`));
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
-
   console.log(chalk.yellow("🎉 Automatic swaps completed!"));
 }
 
@@ -405,14 +336,11 @@ async function startBot(wallet, routerContract) {
           message: chalk.cyan("Account you want to use (e.g., 1, 2, ...): "),
           validate: (input) => {
             const num = parseInt(input);
-            if (isNaN(num) || num < 1 || num > PRIVATE_KEYS.length) {
-              return `Please enter a valid account number between 1 and ${PRIVATE_KEYS.length}!`;
-            }
+            if (isNaN(num) || num < 1 || num > PRIVATE_KEYS.length) return `Please enter a valid account number between 1 and ${PRIVATE_KEYS.length}!`;
             return true;
           },
         },
       ]);
-
       console.log(chalk.green(`🚀 Starting automatic swap with ${amount} cBTC using account ${account}...`));
       const autoWallet = await initializeSpecificWallet(parseInt(account));
       const autoRouterContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, autoWallet);
