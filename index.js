@@ -164,7 +164,9 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
   try {
     const balance = await wallet.provider.getBalance(wallet.address);
     console.log(chalk.blue(`🤖 cBTC Balance before swap: ${ethers.formatEther(balance)} cBTC`));
-    if (balance.lt(cbtcAmount)) throw new Error("Insufficient cBTC balance");
+    if (ethers.BigNumber.from(balance).lt(cbtcAmount)) {
+      throw new Error(`Insufficient cBTC balance: ${ethers.formatEther(balance)} < ${ethers.formatEther(cbtcAmount)}`);
+    }
 
     const path = [(await routerContract.WETH()), USDT_ADDRESS];
     const amountsOutRaw = await routerContract.getAmountsOut(cbtcAmount, path);
@@ -173,6 +175,7 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.blue(`🤖 Expected amounts out: ${amountsOut.map(a => ethers.formatUnits(a, 18)).join(", ")}`));
     const amountOutMin = amountsOut[1].mul(95).div(100); // 5% slippage tolerance
 
+    console.log(chalk.blue(`🤖 Preparing to swap ${ethers.formatEther(cbtcAmount)} cBTC to USDT...`));
     const tx = await routerContract.swapExactETHForTokens(
       amountOutMin,
       path,
@@ -273,7 +276,7 @@ async function autoSwap(wallet, routerContract, totalCBTCAmount) {
     const balance = await wallet.provider.getBalance(wallet.address);
     console.log(chalk.blue(`🤖 cBTC Balance: ${ethers.formatEther(balance)} cBTC`));
 
-    if (balance.lte(ethers.parseEther("0.00001"))) {
+    if (ethers.BigNumber.from(balance).lte(ethers.parseEther("0.00001"))) {
       console.log(chalk.yellow("🎉 cBTC balance too low to continue swapping!"));
       break;
     }
