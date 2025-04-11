@@ -177,13 +177,8 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.blue(`🔹 Path: [${path.join(" → ")}]`));
     console.log(chalk.blue(`🔹 Amount: ${ethers.formatEther(cbtcAmount)} cBTC`));
 
-    const amountsOut = await routerContract.getAmountsOut(cbtcAmount, path);
-    const expectedUSDT = ethers.BigNumber.from(amountsOut[1]); // Convert BigInt to BigNumber
-    console.log(chalk.blue(`🔹 Expected USDT: ${ethers.formatUnits(expectedUSDT, 6)}`));
-
-    const amountOutMin = expectedUSDT.mul(95).div(100); // 5% slippage
     const tx = await routerContract.swapExactETHForTokens(
-      amountOutMin,
+      0, // Minimal version: no slippage calc
       path,
       wallet.address,
       Math.floor(Date.now() / 1000) + 60 * 20,
@@ -198,7 +193,10 @@ async function swapCBTCtoUSDT(wallet, routerContract, cbtcAmount) {
     console.log(chalk.green(`✅ cBTC → USDT successful!`));
     console.log(chalk.green(`   Tx: ${tx.hash}`));
     
-    return expectedUSDT;
+    // Return approximate USDT received (no getAmountsOut for now)
+    const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
+    const usdtBalance = await usdtContract.balanceOf(wallet.address);
+    return usdtBalance;
   } catch (error) {
     console.error(chalk.red(`❌ cBTC → USDT failed: ${error.message}`));
     throw error;
@@ -228,7 +226,7 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
     console.log(chalk.blue(`🔹 Path: [${path.join(" → ")}]`));
 
     const amountsOut = await routerContract.getAmountsOut(usdtAmount, path);
-    const expectedCBTC = ethers.BigNumber.from(amountsOut[1]); // Convert BigInt to BigNumber
+    const expectedCBTC = ethers.BigNumber.from(amountsOut[1]);
     console.log(chalk.blue(`🔹 Expected cBTC: ${ethers.formatEther(expectedCBTC)}`));
 
     // Debug pair info
