@@ -37,7 +37,7 @@ const usdtAbi = [
   "function approve(address spender, uint256 amount) public returns (bool)",
   "function balanceOf(address account) public view returns (uint256)",
   "function decimals() public view returns (uint8)",
-  "function allowance(address owner, address spender) public view returns (uint256)" // Added explicitly
+  "function allowance(address owner, address spender) public view returns (uint256)"
 ];
 
 const colors = [
@@ -208,15 +208,15 @@ async function swapUSDTtoCBTC(wallet, routerContract, pairContract, usdtAmount) 
   
   try {
     const usdtContract = new ethers.Contract(USDT_ADDRESS, usdtAbi, wallet);
-    const usdtBalance = await usdtContract.balanceOf(wallet.address);
+    const usdtBalance = ethers.BigNumber.from(await usdtContract.balanceOf(wallet.address)); // Convert to BigNumber
     
-    if (usdtBalance.lt(usdtAmount)) { // Use .lt() for BigNumber comparison
+    if (usdtBalance.lt(usdtAmount)) {
       throw new Error(`Insufficient USDT: ${ethers.formatUnits(usdtBalance, 6)} < ${ethers.formatUnits(usdtAmount, 6)}`);
     }
 
-    const allowance = await usdtContract.allowance(wallet.address, ROUTER_ADDRESS);
+    const allowance = ethers.BigNumber.from(await usdtContract.allowance(wallet.address, ROUTER_ADDRESS)); // Convert to BigNumber
     console.log(chalk.blue(`🔹 Current allowance: ${ethers.formatUnits(allowance, 6)} USDT`));
-    if (allowance.lt(usdtAmount)) { // Use .lt() for BigNumber
+    if (allowance.lt(usdtAmount)) {
       console.log(chalk.blue(`🔹 Approving USDT...`));
       const approveTx = await usdtContract.approve(ROUTER_ADDRESS, usdtAmount);
       await approveTx.wait();
@@ -272,7 +272,7 @@ async function performSwapCycle(wallet, cbtcAmount) {
   console.log(chalk.blue(`🤖 Starting swap cycle...`));
   
   try {
-    const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet);
+    const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, wallet.connect(wallet.provider)); // Explicit signer
     const pairContract = new ethers.Contract(PAIR_ADDRESS, pairAbi, wallet);
 
     const usdtReceived = await swapCBTCtoUSDT(wallet, routerContract, cbtcAmount);
